@@ -1,1 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Free Throws Until the r-th Score</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#F1B82D; --gold-soft:#FCEFCB; --ink:#000000; --ink-2:#3a3a3a; --muted:#6b6b6b;
+  --bg:#ffffff; --panel:#f4f4f2; --line:#dedcd6; --miss:#B03A2E; --make:#2E7D4F;
+  --wood:#E9C79A; --wood-2:#DDB27C; --navy:#1F3A68; --seg-b:#E3E9F3;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ink:#f5f5f5; --ink-2:#d6d6d6; --muted:#a3a3a3; --bg:#121212; --panel:#1e1e1e; --line:#333;
+    --gold-soft:#3a3016; --wood:#5a4630; --wood-2:#4d3b27; --navy:#9db8e8; --seg-b:#1d2838;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#f5f5f5; --ink-2:#d6d6d6; --muted:#a3a3a3; --bg:#121212; --panel:#1e1e1e; --line:#333;
+  --gold-soft:#3a3016; --wood:#5a4630; --wood-2:#4d3b27; --navy:#9db8e8; --seg-b:#1d2838;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Outfit","Satoshi","Segoe UI",Helvetica,Arial,sans-serif;font-size:17px;line-height:1.4;font-variant-numeric:tabular-nums}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 24px 32px}
+header{margin-bottom:16px}
+h1{font-size:clamp(26px,3.2vw,40px);font-weight:800;letter-spacing:-0.02em;margin:0;line-height:1.05}
+.sub{color:var(--muted);margin:4px 0 0;font-size:16px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:20px;align-items:start}
+.court{background:var(--panel);border-radius:18px;overflow:hidden;position:relative}
+.court svg{display:block;width:100%;height:auto}
+.result{position:absolute;top:16px;left:20px;font-size:clamp(22px,2.6vw,34px);font-weight:800;letter-spacing:-0.01em;opacity:0;transition:opacity .2s}
+.result.show{opacity:1}
+.count{position:absolute;top:18px;right:20px;font-size:18px;font-weight:700;color:var(--ink-2)}
+.attempts{padding:12px 18px 16px;min-height:58px}
+.attempts .lbl{font-weight:600;color:var(--ink-2);margin-right:4px}
+.segs{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;margin-top:8px}
+.seg{display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px 8px 5px;border-radius:12px}
+.seg.a{background:var(--gold-soft)} .seg.b{background:var(--seg-b)}
+.seg .row{display:flex;gap:6px}
+.seg .lab{font-size:14px;font-weight:600;color:var(--ink-2)}
+.seg.plain{padding:0;align-items:flex-start}
+.seg.plain .row{flex-wrap:wrap}
+.dot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;color:#fff}
+.dot.miss{background:var(--miss)} .dot.make{background:var(--make)}
+.dot.last{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--gold)}
+.summary{margin-top:12px;font-size:17px;line-height:1.55}
+.summary .x{font-weight:800;font-size:20px}
+.summary .why{color:var(--ink-2);font-size:15px;margin-top:4px}
+.side{display:flex;flex-direction:column;gap:16px}
+.box{background:var(--panel);border-radius:18px;padding:18px}
+.box h2{font-size:22px;margin:0;font-weight:700}
+.p-row{display:flex;align-items:baseline;justify-content:space-between;margin-top:8px;gap:10px}
+.p-val{font-size:44px;font-weight:800;line-height:1}
+.p-row span{color:var(--muted)}
+.r-pick{display:flex;gap:6px;margin-top:8px}
+.r-pick button{font:inherit;font-weight:700;font-size:18px;width:46px;height:42px;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;cursor:pointer}
+.r-pick button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.r-pick button:disabled{opacity:.45;cursor:not-allowed}
+.divider{height:1px;background:var(--line);margin:16px 0 4px}
+input[type=range]{width:100%;accent-color:var(--gold);height:28px;margin:6px 0 2px}
+.presets{display:flex;gap:6px;flex-wrap:wrap}
+.presets button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:4px 10px;cursor:pointer}
+.mean{margin-top:14px;font-size:18px;font-weight:600}
+.mean small{display:block;font-weight:400;color:var(--muted);font-size:14px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.btn{font:inherit;font-weight:700;font-size:17px;border:none;border-radius:12px;padding:14px 12px;cursor:pointer;background:var(--ink);color:var(--bg)}
+.btn.primary{background:var(--gold);color:#000;grid-column:1/-1;font-size:20px;padding:16px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.toggle{display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--ink-2);font-size:15px}
+.toggle input{width:18px;height:18px;accent-color:var(--gold)}
+@media (max-width:900px){.main{grid-template-columns:1fr}}
+@media (prefers-reduced-motion: reduce){.result{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Free throws until the <span id="hR">3rd</span> score</h1>
+    <p class="sub">X = number of attempts until the r-th made shot. X ~ NB(r, p)</p>
+  </header>
 
+  <div class="main">
+    <div class="court">
+      <div class="result" id="result" aria-live="polite"></div>
+      <div class="count" id="count"></div>
+      <svg id="scene" viewBox="0 0 800 430" role="img" aria-label="Basketball court with a shooter and a hoop">
+        <defs>
+          <clipPath id="ballClip"><circle r="17" cx="0" cy="0"/></clipPath>
+        </defs>
+        <!-- floor -->
+        <rect x="0" y="360" width="800" height="70" fill="var(--wood)"/>
+        <g stroke="var(--wood-2)" stroke-width="2">
+          <line x1="0" y1="378" x2="800" y2="378"/><line x1="0" y1="398" x2="800" y2="398"/><line x1="0" y1="416" x2="800" y2="416"/>
+        </g>
+        <line x1="190" y1="360" x2="190" y2="430" stroke="#ffffff" stroke-width="5"/>
+        <text x="200" y="352" font-size="14" fill="var(--muted)" font-family="Outfit, sans-serif">free throw line</text>
+        <!-- hoop stand -->
+        <rect x="726" y="80" width="10" height="282" fill="var(--ink-2)"/>
+        <rect x="690" y="64" width="16" height="150" rx="3" fill="#ffffff" stroke="var(--ink-2)" stroke-width="3"/>
+        <rect x="706" y="110" width="22" height="8" fill="var(--ink-2)"/>
+        <rect x="693" y="138" width="10" height="44" fill="none" stroke="var(--miss)" stroke-width="2"/>
+        <!-- net -->
+        <g id="net">
+          <path d="M600 182 L612 238 L668 238 L680 182" fill="none" stroke="var(--ink-2)" stroke-width="2"/>
+          <path d="M612 182 L622 238 M626 182 L633 238 M640 182 L640 238 M654 182 L647 238 M668 182 L658 238" stroke="var(--ink-2)" stroke-width="1.5" fill="none"/>
+          <path d="M604 200 L676 200 M607 218 L673 218" stroke="var(--ink-2)" stroke-width="1.5" fill="none"/>
+        </g>
+        <!-- shooter -->
+        <g id="shooter" fill="var(--ink)">
+          <circle cx="140" cy="196" r="20"/>
+          <rect x="124" y="218" width="32" height="76" rx="12" id="jersey" fill="var(--gold)"/>
+          <rect x="126" y="292" width="11" height="68" rx="5"/>
+          <rect x="143" y="292" width="11" height="68" rx="5"/>
+          <line x1="152" y1="230" x2="166" y2="186" stroke="var(--ink)" stroke-width="11" stroke-linecap="round" id="arm"/>
+        </g>
+        <!-- ball -->
+        <g id="ball" transform="translate(168,168)">
+          <g id="ballSpin">
+            <circle r="17" fill="#E07B24" stroke="#5a2e0c" stroke-width="2"/>
+            <g clip-path="url(#ballClip)" stroke="#5a2e0c" stroke-width="1.6" fill="none">
+              <line x1="-17" y1="0" x2="17" y2="0"/><line x1="0" y1="-17" x2="0" y2="17"/>
+              <path d="M-12 -12 Q0 0 -12 12"/><path d="M12 -12 Q0 0 12 12"/>
+            </g>
+          </g>
+        </g>
+        <!-- rim drawn on top of the ball so made shots pass behind the front rim -->
+        <line x1="598" y1="182" x2="690" y2="182" stroke="var(--miss)" stroke-width="6" stroke-linecap="round"/>
+      </svg>
+      <div class="attempts" id="attempts" aria-live="polite"></div>
+    </div>
+
+    <div class="side">
+      <div class="box">
+        <h2>Shooter settings</h2>
+        <div class="p-row"><span>r = number of scores needed</span></div>
+        <div class="r-pick" id="rPick"></div>
+        <div class="divider"></div>
+        <div class="p-row"><span>p = probability of scoring on each attempt</span></div>
+        <div class="p-row"><div class="p-val" id="pVal">0.40</div></div>
+        <input type="range" id="p" min="0.05" max="0.95" step="0.05" value="0.4" aria-label="Probability of scoring">
+        <div class="presets" id="presets"></div>
+        <div class="mean" id="mean"></div>
+        <div class="btns">
+          <button class="btn primary" id="untilBtn">Shoot until 3 scores</button>
+          <button class="btn" id="oneBtn">Shoot once</button>
+          <button class="btn" id="fiveBtn">Play 5 rounds</button>
+        </div>
+        <label class="toggle"><input type="checkbox" id="fast"> Fast animation</label>
+        <label class="toggle"><input type="checkbox" id="split"> Show waits between scores (X<sub>1</sub>, X<sub>2</sub>, …)</label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let state;
+  try { state = JSON.parse(localStorage.getItem("nbShot")); } catch(e) { state = null; }
+  if (!state || typeof state.p !== "number" || typeof state.r !== "number") state = { p:0.4, r:3, current:[] };
+  state.current = state.current || [];
+  const save = () => { try { localStorage.setItem("nbShot", JSON.stringify(state)); } catch(e) {} };
+  const $ = id => document.getElementById(id);
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let busy = false, lastDone = null;
+  const ord = n => n + (n===1?"st":n===2?"nd":n===3?"rd":"th");
+  const makes = arr => arr.filter(Boolean).length;
+  function comb(n,k){ if(k<0||k>n) return 0; let c=1; for(let i=1;i<=k;i++) c=c*(n-k+i)/i; return Math.round(c); }
+
+  // r picker
+  for(let v=1; v<=5; v++){
+    const b=document.createElement("button"); b.textContent=v; b.dataset.r=v;
+    b.onclick=()=>{ if(busy) return; state.r=v; state.current=[]; lastDone=null; save(); renderAll(); };
+    $("rPick").appendChild(b);
+  }
+  [0.2,0.4,0.5,0.7,0.9].forEach(v=>{
+    const b=document.createElement("button"); b.textContent=v.toFixed(1);
+    b.onclick=()=>{ if(!busy) setP(v); };
+    $("presets").appendChild(b);
+  });
+  function setP(v){ state.p = Math.round(v*100)/100; save(); renderAll(); }
+  $("p").addEventListener("input", e => setP(parseFloat(e.target.value)));
+
+  // animation
+  const ball=$("ball"), spin=$("ballSpin"), arm=$("arm"), result=$("result");
+  const START={x:168,y:168}; let angle=0;
+  function place(x,y){ ball.setAttribute("transform","translate("+x+","+y+")"); spin.setAttribute("transform","rotate("+angle+")"); }
+  const speed = () => reduce ? 0.15 : ($("fast").checked ? 0.4 : 1);
+  function arc(from,to,h,dur){
+    dur*=speed();
+    return new Promise(res=>{
+      const t0=performance.now();
+      (function step(now){
+        const u=Math.min(1,(now-t0)/dur);
+        place(from.x+(to.x-from.x)*u, from.y+(to.y-from.y)*u - h*4*u*(1-u)); angle+=9;
+        if(u<1) requestAnimationFrame(step); else res();
+      })(t0);
+    });
+  }
+  const wait = ms => new Promise(r=>setTimeout(r, ms*speed()));
+  function flash(text,color){ result.textContent=text; result.style.color=color; result.classList.add("show"); }
+  function swish(){ if(reduce) return; const n=$("net"); n.style.transition="transform .12s"; n.style.transformOrigin="640px 182px"; n.style.transform="scaleY(1.18)"; setTimeout(()=>n.style.transform="scaleY(1)",160*speed()); }
+  async function animateShot(made, k){
+    result.classList.remove("show");
+    arm.setAttribute("x2","176"); arm.setAttribute("y2","178");
+    place(START.x,START.y); await wait(120);
+    if(made){
+      await arc(START,{x:640,y:170},150,900); swish();
+      await arc({x:640,y:170},{x:640,y:250},0,220);
+      flash(state.r===1 ? "Score!" : "Score "+k+" of "+state.r+"!","var(--make)");
+      await arc({x:640,y:250},{x:600,y:343},20,360);
+    } else {
+      const front=Math.random()<0.5, hit= front?{x:604,y:166}:{x:684,y:166};
+      await arc(START,hit,150,880);
+      flash("Miss","var(--miss)");
+      await arc(hit, front?{x:520,y:343}:{x:560,y:343}, 70, 520);
+    }
+    arm.setAttribute("x2","166"); arm.setAttribute("y2","186");
+    await wait(250); place(START.x,START.y);
+  }
+
+  // logic: a round ends at the r-th score
+  async function shootOnce(){
+    if(lastDone){ lastDone=null; }
+    const made=Math.random()<state.p;
+    await animateShot(made, makes(state.current)+(made?1:0));
+    state.current.push(made);
+    if(makes(state.current)>=state.r){ lastDone=state.current.slice(); state.current=[]; save(); renderAttempts(); return true; }
+    save(); renderAttempts(); return false;
+  }
+  async function playRound(){ let g=0; while(g++<200){ if(await shootOnce()) break; } }
+  function lock(v){ busy=v; ["untilBtn","oneBtn","fiveBtn","p"].forEach(id=>$(id).disabled=v); document.querySelectorAll("#rPick button,#presets button").forEach(b=>b.disabled=v); }
+  $("split").onchange=renderAttempts;
+  $("oneBtn").onclick=async()=>{ if(busy) return; lock(true); await shootOnce(); lock(false); };
+  $("untilBtn").onclick=async()=>{ if(busy) return; lock(true); await playRound(); lock(false); };
+  $("fiveBtn").onclick=async()=>{ if(busy) return; lock(true); for(let r=0;r<5;r++){ await playRound(); await wait(900); } lock(false); };
+
+  // rendering
+  function segments(seq){
+    const segs=[]; let cur=[];
+    seq.forEach((m,i)=>{ cur.push({m,i}); if(m){ segs.push(cur); cur=[]; } });
+    if(cur.length) segs.push(cur);
+    return segs;
+  }
+  function renderAttempts(){
+    const el=$("attempts"), done=!!lastDone, seq=done?lastDone:state.current, r=state.r;
+    $("count").textContent = seq.length ? "Scores: "+makes(seq)+" of "+r : "";
+    el.innerHTML='<span class="lbl">This round:</span>';
+    if(!seq.length){ el.innerHTML+='<span style="color:var(--muted)">Press a shoot button to start.</span>'; return; }
+    const wrap=document.createElement("div"); wrap.className="segs";
+    const split=$("split").checked;
+    const segs=segments(seq);
+    (split?segs:[seq.map((m,i)=>({m,i}))]).forEach((s,j)=>{
+      const box=document.createElement("div"); box.className=split?"seg "+(j%2?"b":"a"):"seg plain";
+      const row=document.createElement("div"); row.className="row";
+      s.forEach(({m,i})=>{
+        const d=document.createElement("span");
+        d.className="dot "+(m?"make":"miss")+(done&&i===seq.length-1?" last":"");
+        d.textContent=i+1; d.title=m?"Score":"Miss"; row.appendChild(d);
+      });
+      box.appendChild(row);
+      const lab=document.createElement("div"); lab.className="lab";
+      const closed=s[s.length-1].m;
+      lab.innerHTML = r>1 ? "X<sub>"+(j+1)+"</sub> = "+s.length+(closed?"":"…") : (closed?"":"…");
+      if(split && lab.innerHTML) box.appendChild(lab);
+      wrap.appendChild(box);
+    });
+    el.appendChild(wrap);
+    if(done){
+      const x=seq.length, sm=document.createElement("div"); sm.className="summary";
+      let line;
+      if(r>1 && split){
+        line='<span class="x">X = '+segs.map((_,j)=>"X<sub>"+(j+1)+"</sub>").join(" + ")+" = "+segs.map(s=>s.length).join(" + ")+" = "+x+'</span>';
+      } else line='<span class="x">X = '+x+'</span>';
+      const c=comb(x-1,r-1), prob=c*Math.pow(state.p,r)*Math.pow(1-state.p,x-r);
+      let why;
+      if(r===1) why = x===1 ? "Shot 1 is the first score." : "Shot "+x+" is the first score, and every shot before it is a miss.";
+      else why = "Shot "+x+" is the "+ord(r)+" score. The first "+(x-1)+" shots hold "+(r-1)+" score"+(r-1>1?"s":"")+" in some order, and there are C("+(x-1)+", "+(r-1)+") = "+c+" such orders.";
+      why += " P(X = "+x+") = "+(r>1?"C("+(x-1)+", "+(r-1)+") · ":"")+"p<sup>"+r+"</sup>(1 − p)<sup>"+(x-r)+"</sup> ≈ "+prob.toFixed(4)+".";
+      sm.innerHTML=line+'<div class="why">'+why+'</div>';
+      el.appendChild(sm);
+    }
+  }
+
+  function renderAll(){
+    const r=state.r, p=state.p;
+    $("p").value=p; $("pVal").textContent=p.toFixed(2);
+    document.querySelectorAll("#rPick button").forEach(b=>b.setAttribute("aria-pressed", String(+b.dataset.r===r)));
+    $("hR").textContent=r===1?"first":ord(r);
+    $("untilBtn").textContent = r===1 ? "Shoot until score" : "Shoot until "+r+" scores";
+    $("mean").innerHTML="E(X) = r/p = "+r+"/"+p.toFixed(2)+" = "+(r/p).toFixed(2)+
+      "<small>Var(X) = r(1 − p)/p² = "+(r*(1-p)/(p*p)).toFixed(2)+(r===1?". With r = 1 this is the geometric game.":"")+"</small>";
+    renderAttempts();
+  }
+  place(START.x,START.y); renderAll();
+})();
+</script>
+</body>
+</html>
